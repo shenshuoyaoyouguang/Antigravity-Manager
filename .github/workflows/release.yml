@@ -73,11 +73,11 @@ jobs:
 
       - name: Build the app (unsigned)
         if: github.event_name == 'workflow_dispatch'
-        run: npm run tauri build -- ${{ matrix.args }}
+        run: npm run tauri build -- ${{ matrix.args }} --no-bundle
 
       # 3. 处理 macOS 架构重命名冲突 (解决 422 Already Exists)
       - name: Rename macOS assets for architecture
-        if: matrix.platform == 'macos-latest'
+        if: startsWith(github.ref, 'refs/tags/') && matrix.platform == 'macos-latest'
         run: |
           # 识别架构
           if [[ "${{ matrix.args }}" == *"--target aarch64-apple-darwin"* ]]; then
@@ -115,6 +115,7 @@ jobs:
 
       # 1. 上传 updater.json 到 Artifacts (供后续合并使用)
       - name: Upload updater json
+        if: startsWith(github.ref, 'refs/tags/')
         uses: actions/upload-artifact@v4
         with:
           name: updater-json-${{ matrix.platform }}-${{ strategy.job-index }}
@@ -123,6 +124,7 @@ jobs:
 
       # 2. 上传安装包到 Artifacts (供后续统一发布任务下载)
       - name: Upload Release Artifacts
+        if: startsWith(github.ref, 'refs/tags/')
         uses: actions/upload-artifact@v4
         with:
           name: release-assets-${{ matrix.platform }}-${{ strategy.job-index }}
@@ -145,6 +147,7 @@ jobs:
 
   publish-release:
     needs: build-tauri
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
       contents: write
