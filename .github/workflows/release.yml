@@ -52,10 +52,27 @@ jobs:
       - name: Install frontend dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Build the app
+      - name: Validate signing secrets (tag releases)
+        if: startsWith(github.ref, 'refs/tags/')
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ] || [ -z "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" ]; then
+            echo "Missing TAURI signing secrets. Configure TAURI_SIGNING_PRIVATE_KEY and TAURI_SIGNING_PRIVATE_KEY_PASSWORD." >&2
+            exit 1
+          fi
+
+      - name: Build the app (signed)
+        if: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD != '' }}
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npm run tauri build -- ${{ matrix.args }}
+
+      - name: Build the app (unsigned)
+        if: ${{ github.event_name == 'workflow_dispatch' && (secrets.TAURI_SIGNING_PRIVATE_KEY == '' || secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD == '') }}
         run: npm run tauri build -- ${{ matrix.args }}
 
       # 3. 处理 macOS 架构重命名冲突 (解决 422 Already Exists)
