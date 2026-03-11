@@ -77,7 +77,10 @@ jobs:
 
       - name: Build the app (unsigned, fork tags)
         if: startsWith(github.ref, 'refs/tags/') && github.repository != 'lbjlaq/Antigravity-Manager'
-        run: npm run tauri build -- ${{ matrix.args }} --config '{"bundle":{"createUpdaterArtifacts":false}}'
+        shell: bash
+        run: |
+          node -e "require('fs').writeFileSync('tauri.fork.conf.json', JSON.stringify({bundle:{createUpdaterArtifacts:false}}))"
+          npm run tauri build -- ${{ matrix.args }} --config tauri.fork.conf.json
 
       # 3. 处理 macOS 架构重命名冲突 (解决 422 Already Exists)
       - name: Rename macOS assets for architecture
